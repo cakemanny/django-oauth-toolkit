@@ -6,7 +6,6 @@ from django.urls import reverse
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import View
-from jwcrypto import jwk
 
 from ..models import get_application_model
 from ..settings import oauth2_settings
@@ -82,11 +81,10 @@ class JwksInfoView(OIDCOnlyMixin, View):
     def get(self, request, *args, **kwargs):
         keys = []
         if oauth2_settings.OIDC_RSA_PRIVATE_KEY:
-            for pem in [
-                oauth2_settings.OIDC_RSA_PRIVATE_KEY,
-                *oauth2_settings.OIDC_RSA_PRIVATE_KEYS_INACTIVE,
+            for key in [
+                oauth2_settings.oidc_rsa_jwk,
+                *oauth2_settings.oidc_inactive_rsa_jwks,
             ]:
-                key = jwk.JWK.from_pem(pem.encode("utf8"))
                 data = {"alg": "RS256", "use": "sig", "kid": key.thumbprint()}
                 data.update(json.loads(key.export_public()))
                 keys.append(data)

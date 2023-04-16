@@ -219,7 +219,7 @@ class AbstractApplication(models.Model):
         if self.algorithm == AbstractApplication.RS256_ALGORITHM:
             if not oauth2_settings.OIDC_RSA_PRIVATE_KEY:
                 raise ImproperlyConfigured("You must set OIDC_RSA_PRIVATE_KEY to use RSA algorithm")
-            return jwk.JWK.from_pem(oauth2_settings.OIDC_RSA_PRIVATE_KEY.encode("utf8"))
+            return oauth2_settings.oidc_rsa_jwk
         elif self.algorithm == AbstractApplication.HS256_ALGORITHM:
             return jwk.JWK(kty="oct", k=base64url_encode(self.client_secret))
         raise ImproperlyConfigured("This application does not support signed tokens")

@@ -16,12 +16,15 @@ OAuth2 Provider settings, checking for user settings first, then falling
 back to the defaults.
 """
 
+from functools import cached_property
+
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.http import HttpRequest
 from django.test.signals import setting_changed
 from django.urls import reverse
 from django.utils.module_loading import import_string
+from jwcrypto import jwk
 from oauthlib.common import Request
 
 
@@ -268,6 +271,10 @@ class OAuth2ProviderSettings:
         self._cached_attrs.clear()
         if hasattr(self, "_user_settings"):
             delattr(self, "_user_settings")
+        if hasattr(self, "oidc_rsa_jwk"):
+            delattr(self, "oidc_rsa_jwk")
+        if hasattr(self, "oidc_inactive_rsa_jwks"):
+            delattr(self, "oidc_inactive_rsa_jwks")
 
     def oidc_issuer(self, request):
         """
@@ -290,6 +297,24 @@ class OAuth2ProviderSettings:
             raise TypeError("request must be a django or oauthlib request: got %r" % request)
         abs_url = django_request.build_absolute_uri(reverse("oauth2_provider:oidc-connect-discovery-info"))
         return abs_url[: -len("/.well-known/openid-configuration/")]
+
+    @cached_property
+    def oidc_rsa_jwk(self):
+        """
+        Helper property to access an already loaded from PEM JWK for the
+        OIDC_RSA_PRIVATE_KEY. Cached as this is expensive.
+        """
+        if not self.OIDC_RSA_PRIVATE_KEY:
+            return None
+        return jwk.JWK.from_pem(self.OIDC_RSA_PRIVATE_KEY.encode("utf-8"))
+
+    @cached_property
+    def oidc_inactive_rsa_jwks(self):
+        """
+        Helper property to access the inactive OIDC keys, already loaded from
+        PEM as JWKs
+        """
+        return [jwk.JWK.from_pem(pem.encode("utf-8")) for pem in self.OIDC_RSA_PRIVATE_KEYS_INACTIVE]
 
 
 oauth2_settings = OAuth2ProviderSettings(USER_SETTINGS, DEFAULTS, IMPORT_STRINGS, MANDATORY)
